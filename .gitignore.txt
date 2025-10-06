@@ -1,1 +1,33 @@
 .venv/
+
+# --- JetBrains / PyCharm ---
+.idea/
+*.iml
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+*.log
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+*.env
+.envrc
+
+# Notebooks
+.ipynb_checkpoints/
+
+# SO
+.DS_Store
+Thumbs.db
