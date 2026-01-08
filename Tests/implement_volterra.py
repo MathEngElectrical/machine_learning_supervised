@@ -4,12 +4,12 @@ import numpy as np
 from defines import *
 def main():
 
-<<<<<<< Updated upstream:Tests/implement_volterra.py
+
     data = loadmat(file_IN_OUT_PA)
     array_in, array_out = np.array([data_in for data_in in data['in']]), np.array([data_out for data_out in data['out']])
     X = func_calculate_array_in_volterra(array_in, P, M)
     COEFS = func_find_coef_volterra(X, array_out)
-=======
+
     try:
         data = loadmat(r'C:\Projects\Machine_Learning_Supervised\Datas\IN_OUT_PA.mat')
         P, M = 3, 2
@@ -19,7 +19,7 @@ def main():
         print()
     except Exception as e:
         print(e)
->>>>>>> Stashed changes:Tests/test1.py
+
 
 
 def func_calculate_array_in_volterra(list_in, P, M):
