@@ -2,8 +2,9 @@ from scipy.io import loadmat
 import sympy as sp
 import numpy as np
 from defines import *
-def main():
 
+
+def main():
 
     data = loadmat(file_IN_OUT_PA)
     array_in, array_out = np.array([data_in for data_in in data['in']]), np.array([data_out for data_out in data['out']])
