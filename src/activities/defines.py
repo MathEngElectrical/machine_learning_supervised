@@ -1,5 +1,5 @@
 # CONFIGURAÇÃO DOS DIRETÓRIOS E ARQUIVOS
-base_dir_repo = '\Machine_Learning_Supervised\Datas'
+base_dir_repo = '\Machine_Learning_Supervised\datas'
 base_dir_user = 'C:\Projects' # Ajuste conforme o seu diretório
 path = base_dir_user + base_dir_repo
 file_in_out_SBRT2_direto = path + r'\in_out_SBRT2_direto.mat'
