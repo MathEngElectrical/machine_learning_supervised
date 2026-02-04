@@ -1,9 +1,8 @@
 from scipy.io import loadmat
-import sympy as Symbol
 import numpy as np
 from math import log10
-from defines import *
-from implement_volterra import func_find_coef_volterra
+from src.activities.defines import *
+from src.activities.implement_volterra import func_find_coef_volterra
 import matplotlib.pyplot as plt
 
 def main():

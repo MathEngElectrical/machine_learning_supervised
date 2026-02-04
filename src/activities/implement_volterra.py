@@ -1,7 +1,6 @@
 from scipy.io import loadmat
-import sympy as sp
 import numpy as np
-from defines import *
+from src.activities.defines import *
 
 
 def main():
@@ -12,7 +11,7 @@ def main():
     COEFS = func_find_coef_volterra(X, array_out)
 
     try:
-        data = loadmat(r'C:\Projects\Machine_Learning_Supervised\Datas\IN_OUT_PA.mat')
+        data = loadmat(r'/datas/IN_OUT_PA.mat')
         P, M = 3, 2
         array_in, array_out = np.array([data_in for data_in in data['in']]), np.array([data_out for data_out in data['out']])
         X = func_calculate_array_in_volterra(array_in, P, M)
