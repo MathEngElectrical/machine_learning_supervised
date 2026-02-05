@@ -141,7 +141,7 @@ Como a coluna de 1s foi adicionada **por último**, o vetor final contém:
 
 > Dica prática: se você quiser “mapear” um índice de `COEFS` para um par \((p,m)\), basta lembrar que o vetor está organizado em blocos de tamanho `(M+1)` por ordem `p`.
 
-### 4.3 Por que pseudo-inversa (e não “inversão direta”)
+### Pseudo-inversa
 
 Em geral, \(X\) é **retangular** (muito mais linhas do que colunas) e pode ser **mal-condicionada** (features altamente correlacionadas, principalmente com potências e atrasos).  
 A pseudo-inversa (`pinv`) é uma forma robusta de obter a solução de mínimos quadrados.
@@ -154,30 +154,6 @@ $$
 \tilde{X}^{+} = V\Sigma^{+}U^{\top}
 $$
 
-onde \(\Sigma^{+}\) inverte apenas valores singulares “significativos” (descartando os muito pequenos por tolerância), reduzindo instabilidade numérica.
+onde $\Sigma^{+}$ inverte apenas valores singulares “significativos” (descartando os muito pequenos por tolerância), reduzindo instabilidade numérica.
 
----
-
-## 5. Saída e visualização de coeficientes
-
-O repositório prevê uma função auxiliar (ex.: `f_show_coefs`) para apresentar o vetor de coeficientes de forma amigável.
-
-- Se existir bias/intercepto, ele estará no **último** valor.
-- Os demais valores seguem a ordem definida pela montagem de `X`.
-
----
-
-## 6. Observações e boas práticas
-
-- **SymPy** pode aparecer importado por herança do notebook, mas não é obrigatório para o cálculo numérico (a estimação é toda em NumPy).
-- Para comparar o modelo com medições, um passo natural é reconstruir \(\hat{y}\) e calcular métricas (MSE/NMSE).
-
----
-
-## 7. Próximos passos sugeridos
-
-- Validação com conjunto de teste (treino/teste).
-- Normalização da entrada (reduz problemas numéricos ao elevar potências).
-- Regularização (Ridge/Tikhonov) se os coeficientes “explodirem” por mal-condicionamento.
-- Evoluir de MP para modelos mais ricos (ex.: termos cruzados / GMP), caso necessário.
 
