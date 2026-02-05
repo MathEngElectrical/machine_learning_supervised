@@ -1,215 +1,183 @@
-# ATIVIDADE_2 — Modelagem de um amplificador via Volterra (Memory Polynomial) em Python
+# ATIVIDADE 2 - Modelagem de amplificador via Volterra Série (Memory Polynomial)
 
-Este notebook implementa uma **identificação de modelo não linear com memória** a partir de dados reais de laboratório (entrada/saída de um amplificador).  
-Na prática, ele monta uma matriz de regressão com termos polinomiais e atrasos (memória) e estima os coeficientes por **mínimos quadrados** usando a **pseudo-inversa de Moore–Penrose**.
 
-> Observação: apesar do texto citar “Volterra”, o que é implementado no código é um **Memory Polynomial (MP)** (um subconjunto/forma “diagonal” do modelo de Volterra), muito usado em modelagem comportamental de amplificadores com memória. 
+Implementação de um modelo não linear com **memória** a partir de dados reais de laboratório (entrada/saída de um amplificador). Baseado na série de Volterra, o modelo é uma forma simplificada conhecida como **Memory Polynomial (MP)**.
 
 ---
 
-## Dados de entrada
+Exemplo do `main()` (trecho simplificado):
 
-O notebook carrega um arquivo MATLAB:
+---
 
-- `IN_OUT_PA.mat` contendo duas chaves:
-  - `in`  → amostras de **entrada**
-  - `out` → amostras de **saída** (medidas)
+## O modelo: Volterra “simplificado” (Memory Polynomial)
 
-## Visão geral do modelo (MP / Volterra simplificado)
+O conjunto de termos construído é um **Memory Polynomial (MP)**, que pode ser visto como uma forma “diagonal/truncada” da série de Volterra.
 
-O notebook define:
+Parâmetros
 
-- **P** = grau do polinômio (ordem não-linear)
-- **M** = memória (quantos instantes passados influenciam o presente)
+- **P** → grau do polinômio (ordem não linear)
+- **M** → memória (quantos instantes passados influenciam o presente)
 
-E constrói o vetor de regressores para cada amostra `n` como:
+### Vetor de regressores (features)
 
-\[
-\phi(n)=
-\big[
-x(n)^1, x(n-1)^1, \dots, x(n-M)^1,\;
-x(n)^2, x(n-1)^2, \dots, x(n-M)^2,\;
-\dots,\;
-x(n)^P, x(n-1)^P, \dots, x(n-M)^P
+Para cada amostra no tempo `n`, montamos o vetor de regressores φ(n) com potências e atrasos de x:
+
+$$
+\phi(n)=\big[
+x(n)^1,\;x(n-1)^1,\;\ldots,\;x(n-M)^1,\;
+x(n)^2,\;\ldots,\;x(n-M)^2,\;
+\ldots,\;
+x(n)^P,\;\ldots,\;x(n-M)^P
 \big]
-\]
+$$
 
-O modelo estimado (com termo de bias/intercepto) fica:
+O modelo estimado (incluindo bias/intercepto) pode ser escrito como:
 
-\[
+$$
 \hat{y}(n)= b + \sum_{p=1}^{P}\sum_{m=0}^{M} a_{p,m}\,x(n-m)^p
-\]
+$$
 
-Esse formato é conhecido como **memory polynomial** (derivado/truncado de Volterra). 
+Onde:
+
+- $a_{p,m}$ são os coeficientes do termo de ordem $p$ e atraso $m$;
+- $b$ é o intercepto (bias);
 
 ---
 
-## Funções do notebook
+## Construção da matriz X — `f_calculate_array_in_volterra`
 
-### 1) `func_calculate_array_in_volterra(list_in, P, M)`
+###  O que a função produz
 
-**Objetivo:** transformar a série temporal de entrada em uma lista/matriz de regressão no formato MP.
+A função transforma a série de entrada em uma **matriz de regressão**:
 
-Pontos importantes:
+- $X \in \mathbb{R}^{N \times K}$;
+- $N$ → número de amostras;
+- $K = P\,(M+1)$ → número de features por amostra;
 
-- Para `in_index - m < 0`, o código usa `0` (zero-padding no início).
-- Cada linha gerada tem `P*(M+1)` termos.
-- Não há termos cruzados (ex.: `x(n)x(n-1)`), então não é o Volterra completo.
+Cada linha de `X` é o vetor φ(n).
 
-Código (do notebook):
+## Calculando coeficiente — `f_find_coef_volterra`
+
+Essa função é o **núcleo do método**: ela estima os coeficientes do modelo resolvendo um problema de **mínimos quadrados**.
+
+### Do ponto de vista matemático
+
+Uma vez montados:
+
+- $X \in \mathbb{R}^{N\times K}$ (features / regressores)
+- $y \in \mathbb{R}^{N\times 1}$ (saída medida)
+
+Queremos encontrar $theta$ que minimize o erro quadrático:
+
+$$
+\min_{\theta}\; \lVert y - X\theta \rVert_2^2
+$$
+
+Como o código também estima o **intercepto** \(b\), ele trabalha com uma matriz estendida:
+
+$$
+\tilde{X} = [X\;\;\mathbf{1}]
+$$
+
+onde $\mathbf{1}$ é uma coluna de 1s (shape $N\times 1$).  
+Então o vetor de parâmetros passa a incluir o bias:
+
+$$
+\theta =
+\begin{bmatrix}
+a_{1,0} & \cdots & a_{P,M} & b
+\end{bmatrix}^{\top}
+$$
+
+A solução de mínimos quadrados é obtida via **pseudo-inversa** (Moore–Penrose):
+
+$$
+\theta = \tilde{X}^{+}y
+$$
+
+### Matemática traduzida em programação
+
+A implementação do notebook (equivalente ao `f_find_coef_volterra` do repositório) segue, passo a passo, as equações acima:
+
+#### (1) Garantir que entrada e saída estão em matrizes NumPy 2D
+
+Os dados chegam como listas/arrays que podem ter “sublistas” ou shapes `(N,1)`.  
+O código padroniza isso usando `np.array(...)` + `flatten()` por linha.
+
+Ideia:
 
 ```python
-def func_calculate_array_in_volterra(list_in, P, M):
-    list_in_volterra = []
-    for in_index in range(len(list_in)):
-        list_in_memo = []
-        for p in range(1, P + 1):
-            for m in range(0, M + 1):
-                if in_index - m < 0:
-                    in_volterra = 0
-                else:
-                    in_volterra = list_in[in_index - m][0]
-                list_in_memo.append(in_volterra**p)
-        list_in_volterra.append(list_in_memo)
-    return list_in_volterra
+in_volterra  = np.array([np.array(x).flatten() for x in array_in_volterra])  # -> X  (N x K)
+out_volterra = np.array([np.array(y).flatten() for y in list_out_volterra])  # -> y  (N x 1)
 ```
 
----
+**Tradução matemática:** montar `X` e `y` com shapes compatíveis para álgebra linear.
 
-## Foco especial: `func_find_coef_volterra(array_in_volterra, list_out_volterra)`
-
-### O que ela faz
-
-Essa função resolve um problema clássico de **identificação por mínimos quadrados**:
-
-1. Converte as listas para arrays 2D:
-   - `in_volterra` vira uma matriz **X** de dimensão \(N \times K\), onde:
-     - \(N\) = número de amostras
-     - \(K\) = número de regressores = `P*(M+1)`  
-2. Converte a saída para vetor/matriz **y** (dimensão \(N\times 1\) ou \(N\times L\) se houver múltiplas saídas).
-3. Adiciona uma coluna de **1s** na entrada para estimar o **bias** (intercepto) `b`.
-4. Calcula os coeficientes com pseudo-inversa:
-
-\[
-\theta = X^{+}y
-\]
-
-onde \(X^{+}\) é a **pseudo-inversa de Moore–Penrose**.
-
-Código (do notebook):
+#### (2) Adicionar o termo de bias com uma coluna de 1s
 
 ```python
-def func_find_coef_volterra(array_in_volterra, list_out_volterra):
-    in_volterra = np.array([np.array(x).flatten() for x in array_in_volterra])
-    out_volterra = np.array([np.array(y).flatten() for y in list_out_volterra])
-    in_volterra_adjust = np.hstack([in_volterra, np.ones((in_volterra.shape[0], 1))])
-    COEFS = np.linalg.pinv(in_volterra_adjust) @ out_volterra
-    return COEFS
+X_adjust = np.hstack([in_volterra, np.ones((in_volterra.shape[0], 1))])
 ```
 
-### Interpretação matemática (mínimos quadrados)
+**Tradução matemática:** construir \(\tilde{X}=[X\;\;\mathbf{1}]\).
 
-A função está minimizando o erro quadrático entre o valor medido e o estimado:
-
-\[
-\min_{\theta}\; \|y - X\theta\|_2^2
-\]
-
-- Se \(X\) fosse quadrada e invertível, teríamos \(\theta=X^{-1}y\).
-- Em problemas reais, \(X\) costuma ser **retangular** (mais amostras do que parâmetros) e/ou **mal-condicionada**, então usamos mínimos quadrados.
-
-Uma forma equivalente (quando \(X\) tem posto completo) é a **equação normal**:
-
-\[
-\theta = (X^T X)^{-1}X^T y
-\]
-
-Mas isso pode ser numericamente instável. A pseudo-inversa via SVD costuma ser mais robusta.
-
-### Como o NumPy implementa `pinv`
-
-`np.linalg.pinv(X)` calcula a pseudo-inversa de Moore–Penrose usando **decomposição em valores singulares (SVD)**. 
-
-Em termos de álgebra linear:
-
-1. Faz a SVD (economy):  
-\[
-X = U\Sigma V^T
-\]
-
-2. Inverte apenas os valores singulares “significativos” (corte por tolerância), formando \(\Sigma^+\).
-
-3. Retorna:  
-\[
-X^+ = V\Sigma^+U^T
-\]
-
-O parâmetro `rcond`/`rtol` define o **corte para valores singulares pequenos**, que são tratados como zero para evitar explosões numéricas. 
-
-> Por que isso é importante aqui?  
-> Modelos MP/Volterra podem gerar colunas muito correlacionadas (ex.: `x`, `x^2`, `x^3` e atrasos), o que piora o condicionamento. A SVD com cutoff ajuda a estabilizar a solução.
-
-### Por que adicionar o bias (coluna de 1s)
-
-A linha:
+#### (3) Resolver mínimos quadrados usando pseudo-inversa
 
 ```python
-in_volterra_adjust = np.hstack([in_volterra, np.ones((in_volterra.shape[0], 1))])
+COEFS = np.linalg.pinv(X_adjust) @ out_volterra
 ```
 
-inclui o termo \(b\) no modelo. Isso permite que o ajuste encontre um deslocamento constante na saída, mesmo quando todos os termos polinomiais são zero (por exemplo, no padding inicial).
+**Tradução matemática:** implementar $\theta = \tilde{X}^{+}y$ diretamente.
+
+- `np.linalg.pinv(·)` retorna $\tilde{X}^{+}$
+- `@` faz multiplicação matricial
+
+#### (4) Como interpretar `COEFS`
+
+Como a coluna de 1s foi adicionada **por último**, o vetor final contém:
+
+- `COEFS[:-1]` → coeficientes dos termos $a_{p,m}$ (na ordem definida pelos laços de `p` e `m`)
+- `COEFS[-1]`  → bias/intercepto \(b\)
+
+> Dica prática: se você quiser “mapear” um índice de `COEFS` para um par \((p,m)\), basta lembrar que o vetor está organizado em blocos de tamanho `(M+1)` por ordem `p`.
+
+### 4.3 Por que pseudo-inversa (e não “inversão direta”)
+
+Em geral, \(X\) é **retangular** (muito mais linhas do que colunas) e pode ser **mal-condicionada** (features altamente correlacionadas, principalmente com potências e atrasos).  
+A pseudo-inversa (`pinv`) é uma forma robusta de obter a solução de mínimos quadrados.
+
+Internamente, `np.linalg.pinv` calcula a pseudo-inversa via **SVD (decomposição em valores singulares)**:
+
+$$
+\tilde{X} = U\Sigma V^{\top}
+\quad\Rightarrow\quad
+\tilde{X}^{+} = V\Sigma^{+}U^{\top}
+$$
+
+onde \(\Sigma^{+}\) inverte apenas valores singulares “significativos” (descartando os muito pequenos por tolerância), reduzindo instabilidade numérica.
 
 ---
 
-## Execução no notebook
+## 5. Saída e visualização de coeficientes
 
-A sequência central é:
+O repositório prevê uma função auxiliar (ex.: `f_show_coefs`) para apresentar o vetor de coeficientes de forma amigável.
 
-```python
-X = func_calculate_array_in_volterra(array_in, P, M)
-COEFS = func_find_coef_volterra(X, array_out)
-X = np.array(X)
-```
-
-E depois:
-
-- Confere o shape de `in_volterra`
-- Imprime os coeficientes estimados
+- Se existir bias/intercepto, ele estará no **último** valor.
+- Os demais valores seguem a ordem definida pela montagem de `X`.
 
 ---
 
-## Observação sobre a última célula (rascunho)
+## 6. Observações e boas práticas
 
-A célula final do notebook tem:
-
-```python
-out_array = np.array([np.array(y).flatten() for y in lista_out])
-X_bias = np.hstack([in_volterra, np.ones((in_volterra.shape[0], 0))])
-COEFS = np.linalg.pinv(X_bias) @ out_array
-```
-
-Do jeito que está:
-
-- `lista_out` **não aparece definido** no notebook (provável intenção era usar `array_out`).
-- `np.ones((..., 0))` cria **zero colunas**, então **não adiciona bias** (provável que o correto fosse `1`).
-
-Como a função `func_find_coef_volterra` já resolve isso corretamente, essa célula parece um **teste/rascunho** e pode ser removida ou corrigida.
+- **SymPy** pode aparecer importado por herança do notebook, mas não é obrigatório para o cálculo numérico (a estimação é toda em NumPy).
+- Para comparar o modelo com medições, um passo natural é reconstruir \(\hat{y}\) e calcular métricas (MSE/NMSE).
 
 ---
 
-## Próximos passos sugeridos
+## 7. Próximos passos sugeridos
 
-- **Validação do modelo:** calcular \(\hat{y}\) e métricas (MSE, NMSE, R²) em treino/teste.
-- **Normalização/escala:** padronizar `x` para melhorar condicionamento antes de elevar potências.
-- **Regularização (Ridge):** se houver instabilidade, resolver  
-  \(\min \|y-X\theta\|^2 + \lambda\|\theta\|^2\).
-- **Volterra mais completo (termos cruzados):** incluir produtos entre atrasos para capturar efeitos não-lineares mais gerais (à custa de muito mais parâmetros). 
+- Validação com conjunto de teste (treino/teste).
+- Normalização da entrada (reduz problemas numéricos ao elevar potências).
+- Regularização (Ridge/Tikhonov) se os coeficientes “explodirem” por mal-condicionamento.
+- Evoluir de MP para modelos mais ricos (ex.: termos cruzados / GMP), caso necessário.
 
----
-
-## Referências (para aprofundar)
-
-- Documentação do **NumPy**: `numpy.linalg.pinv` (pseudo-inversa via SVD e cutoff de valores singulares).
-- Visão geral de **SVD** e pseudo-inversa de Moore–Penrose (álgebra linear aplicada a mínimos quadrados).
-- Documentação/leituras sobre **Memory Polynomial** derivado de **Volterra** para modelagem de amplificadores (MP / GMP).
-- Artigos e notas de modelagem comportamental de amplificadores com efeitos de memória (Volterra, MP, GMP).

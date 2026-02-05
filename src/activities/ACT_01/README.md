@@ -9,7 +9,7 @@ Além do ajuste, o notebook plota o conjunto **real** vs **estimado**.
 
 ---
 
-## 1) Problema matemático
+## Problema matemático
 
 Dado um conjunto de $n$ amostras $\{(x_i, y_i)\}_{i=1}^{n}$, busca-se uma reta
 
@@ -37,7 +37,7 @@ $$
 
 ---
 
-## 2) Solução analítica por Cálculo (derivação em $w$ e $b$)
+## Solução analítica por Cálculo (derivação em $w$ e $b$)
 
 A função custo $\mathrm{SSE}(w,b)$ é convexa em $(w,b)$. Assim, o mínimo global ocorre quando:
 
@@ -67,7 +67,7 @@ $$
 
 ---
 
-## 3) Solução por Álgebra Linear (Equação Normal)
+## Solução por Álgebra Linear (Equação Normal)
 
 Reescrevendo o problema na forma matricial, para $d$ variáveis (generalização):
 
@@ -104,7 +104,7 @@ $$
 
 ---
 
-## 4) Exemplo numérico
+## Exemplo numérico
 
 Dados:
 
@@ -124,7 +124,7 @@ $$
 
 ---
 
-## 5) O que foi implementado
+## O que foi implementado
 
 Funções principais (nomes do notebook):
 
@@ -147,7 +147,7 @@ Funções principais (nomes do notebook):
 
 
 
-## 6) Observações matemáticas importantes
+## Observações matemáticas importantes
 
 - **Convexidade:** SSE/MSE é uma função quadrática em $(w,b)$, logo tem mínimo global único (exceto em casos degenerados).
 - **Condição de invertibilidade:** para a equação normal, precisa-se que $\tilde{X}^T\tilde{X}$ seja invertível; caso contrário, a pseudoinversa é o caminho robusto.
